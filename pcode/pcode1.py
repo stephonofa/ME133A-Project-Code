@@ -7,15 +7,12 @@ from std_msgs.msg import Float64
 from math import pi, sin, cos, acos, atan2, sqrt, fmod, exp
 
 # Grab the utilities
-from hw5code.GeneratorNode      import GeneratorNode
-from hw5code.TransformHelpers   import *
-from hw5code.TrajectoryUtils    import *
+from pcode.AtlasGeneratorNode      import AtlasGeneratorNode, GeneratorNode
+from pcode.TransformHelpers   import *
+from pcode.TrajectoryUtils    import *
 
 # Grab the general fkin from HW5 P5.
-from hw5code.KinematicChain     import KinematicChain
-from tf2_ros                    import TransformBroadcaster
-from geometry_msgs.msg          import TransformStamped
-from sensor_msgs.msg            import JointState
+from pcode.KinematicChain     import KinematicChain
 
 #
 #   Trajectory Class
@@ -26,10 +23,10 @@ class Trajectory():
         # Setup up the condition number publisher
         #self.pub = node.create_publisher(Float64, '/condition', 10)
         
-        # # Initialize the transform broadcaster
+        # Initialize the transform broadcaster
         # self.broadcaster = TransformBroadcaster(self)
 
-        # # Add a publisher to send the joint commands.
+        # Add a publisher to send the joint commands.
         # self.pub = self.create_publisher(JointState, '/joint_states', 10)
 
         # # Wait for a connection to happen.  This isn't necessary, but
@@ -50,22 +47,35 @@ class Trajectory():
         self.qrf = np.zeros((len(self.rf_jointnames()), 1))
         self.qlh = np.zeros((len(self.lh_jointnames()), 1))
         self.qrh = np.zeros((len(self.rh_jointnames()), 1))
-
+        print(self.jointnames())
         # Initialize the current/starting joint position.
         self.q  = self.q0
         self.lam = 20
-        #TODO Attach pelvis to world frame
-        p_pelvis = pxyz(0.0, 0.3, 0.0)
-        #TODO set the initial joint states for a push up
-        # lh_relbow = self.jointnames().index('l_arm_shx')
-        # rh_relbow = self.jointnames().index('r_arm_shx')
-        # lt_relbow = self.jointnames().index('l_arm_ely')
-        # rt_relbow = self.jointnames().index('r_arm_ely')
 
-        # self.q[lh_relbow,0]     = - pi/2
-        # self.q[rh_relbow,0]     =  pi/2
-        # self.q[lt_relbow,0]     =  pi/2 * 0
-        # self.q[rt_relbow,0]     =  -pi/2 * 0
+        ## Attach pelvis to world frame
+        # Compute position/orientation of the pelvis (w.r.t. world).
+        # p_pelvis = pxyz(0.0, 0.3, 0.0)
+        # R_pelvis = Roty(pi/2)
+        # T_pelvis = T_from_Rp(R_pelvis, p_pelvis)
+
+        # Build up and send the Pelvis w.r.t. World Transform!
+        # trans = TransformStamped()
+        # trans.header.stamp    = self.now().to_msg()
+        # trans.header.frame_id = 'world'
+        # trans.child_frame_id  = 'pelvis'
+        # trans.transform       = Transform_from_T(T_pelvis)
+        # self.broadcaster.sendTransform(trans)
+
+        #Set the initial joint states for a push up
+        l_arm_shz = self.jointnames().index('l_arm_shz')
+        r_arm_shz = self.jointnames().index('r_arm_shz')
+        l_arm_shx = self.jointnames().index('l_arm_shx')
+        r_arm_shx = self.jointnames().index('r_arm_shx')
+
+        self.q[l_arm_shz,0]     = - 5 * pi/12
+        self.q[r_arm_shz,0]     = 5 * pi/12
+        self.q[l_arm_shx,0]     = - pi/8
+        self.q[r_arm_shx,0]     = pi/8
 
     # joint names is a list of all joints
     # boradcast pelvis to fixed position whihch will serve as world
@@ -97,8 +107,9 @@ class Trajectory():
     def jointnames(self):
         return self.lf_jointnames() + \
                self.rf_jointnames() + \
-               self.hd_jointnames() + \
-               self.lh_jointnames() + \
+               self.hd_jointnames()[:3] + \
+               self.lh_jointnames()[3:] + \
+               ['neck_ry'] + \
                self.rh_jointnames()
 
     # Evaluate at the given time.  This was last called (dt) ago.
@@ -156,7 +167,7 @@ def main(args=None):
 
     # Initialize the generator node for 100Hz udpates, using the above
     # Trajectory class.
-    generator = GeneratorNode('generator', 100, Trajectory)
+    generator = AtlasGeneratorNode('generator', 100, Trajectory)
 
     # Spin, meaning keep running (taking care of the timer callbacks
     # and message passing), until interrupted or the trajectory ends.
