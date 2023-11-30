@@ -55,6 +55,7 @@ class Trajectory():
         self.q  = self.q0
         self.lam = 20
         #TODO Attach pelvis to world frame
+        p_pelvis = pxyz(0.0, 0.3, 0.0)
         #TODO set the initial joint states for a push up
         # lh_relbow = self.jointnames().index('l_arm_shx')
         # rh_relbow = self.jointnames().index('r_arm_shx')
@@ -121,13 +122,13 @@ class Trajectory():
         (Plh, Rlh, Jvlh, Jwlh) = self.lh_chain.fkin(self.qlh)
         (Prh, Rrh, Jvrh, Jwrh) = self.rh_chain.fkin(self.qrh)
 
-        block1 = np.vstack((Jvlf, Jwlf))
-        block2 = np.vstack((Jvrf, Jwrf))
-        block3 = np.vstack((Jvlh, Jwlh))
-        block4 = np.vstack((Jvrh, Jwrh))
-        block3 =np.hstack((block3, np.zeros((6, 8))))
-        block4 = np.hstack((block4[:, :3], np.zeros((6, 8)), block4[:, 3:]))
-        J =  block_diag(block1, block2, np.vstack((block3, block4)))
+        J_lf = np.vstack((Jvlf, Jwlf))
+        J_rf = np.vstack((Jvrf, Jwrf))
+        J_lh = np.vstack((Jvlh, Jwlh))
+        J_rh = np.vstack((Jvrh, Jwrh))
+        J_lh =np.hstack((J_lh, np.zeros((6, 8))))
+        J_rh = np.hstack((J_rh[:, :3], np.zeros((6, 8)), J_rh[:, 3:]))
+        J =  block_diag(J_lf, J_rf, np.vstack((J_lh, J_rh)))
         # print('\n\n\n\n:', J.shape, qlast.shape)
         # # Condition Number
         # Jbar = np.diag([1/0.4, 1/0.4, 1/0.4, 1, 1, 1]) @ J
