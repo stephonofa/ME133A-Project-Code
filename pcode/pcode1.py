@@ -171,7 +171,7 @@ class Trajectory():
 
         # Compute position/orientation of the pelvis (w.r.t. world).
         new_p_pelvis = pxyz(0.0, 0.0, 0.32 * sin(t)) + self.p_pelvis_0
-        new_R_pelvis = self.R_pelvis @ Roty(0.1 * sin(t))
+        new_R_pelvis = self.R_pelvis
         self.R_pelvis = new_R_pelvis
         self.p_pelvis = new_p_pelvis
         # Return the position and velocity as python lists.
