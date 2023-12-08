@@ -111,28 +111,13 @@ class AtlasGeneratorNode(Node):
 
         # Determine the corresponding ROS time (seconds since 1970).
         now = self.start + rclpy.time.Duration(seconds=self.t)
-
-        ## Attach atlas pelvis to world frame at start
-        if (self.t == 0 or True):
-            # Compute position/orientation of the pelvis (w.r.t. world).
-            p_pelvis = pxyz(0.0, 0.0, 0.6)
-            R_pelvis = Roty(np.pi/3)
-            T_pelvis = T_from_Rp(R_pelvis, p_pelvis)
-
-            # Build up and send the Pelvis w.r.t. World Transform!
-            trans = TransformStamped()
-            trans.header.stamp    = now.to_msg()
-            trans.header.frame_id = 'world'
-            trans.child_frame_id  = 'pelvis'
-            trans.transform       = Transform_from_T(T_pelvis)
-            self.broadcaster.sendTransform(trans)
-
+        
         # Compute the desired joint positions and velocities for this time.
         desired = self.trajectory.evaluate(self.t, self.dt)
         if desired is None:
             self.future.set_result("Trajectory has ended")
             return
-        (q, qdot) = desired
+        (q, qdot, T_pelvis) = desired
 
         # Check the results.
         if not (isinstance(q, list) and isinstance(qdot, list)):
@@ -148,6 +133,14 @@ class AtlasGeneratorNode(Node):
             self.get_logger().warn("Flatten NumPy arrays before making lists!")
             return
 
+        # Build up and send the Pelvis w.r.t. World Transform!
+        trans = TransformStamped()
+        trans.header.stamp    = now.to_msg()
+        trans.header.frame_id = 'world'
+        trans.child_frame_id  = 'pelvis'
+        trans.transform       = Transform_from_T(T_pelvis)
+        self.broadcaster.sendTransform(trans)
+        
         # Build up a command message and publish.
         cmdmsg = JointState()
         cmdmsg.header.stamp = now.to_msg()      # Current time for ROS
